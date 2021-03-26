@@ -11,10 +11,16 @@ play_height = 600
 block_size = 30
 CINZA = (127, 127, 127)
 AZUL = (0, 0, 255)
+AZUL_CLARO =  (0, 255, 255)
 PRETO = (0, 0, 0)
 AMARELO = (255, 255, 0)
 BRANCO = (255, 255, 255)
 VERMELHO = (255, 0, 0)
+VERDE = (0, 255, 0)
+LARANJA = (255, 165, 0)
+ROXO = (128, 0, 128)
+
+
 
 top_left_x = (s_width - play_width) // 2
 top_left_y = s_height - play_height
@@ -125,7 +131,7 @@ T = [['.....',
 
 shapes = [S, Z, I, O, J, L, T]
  # Cor das peças
-shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
+shape_colors = [VERDE, VERMELHO, AZUL_CLARO, AMARELO, LARANJA, AZUL, ROXO]
 
  # Peça
 class Piece(object):
@@ -192,8 +198,10 @@ def get_shape():
 	return Piece(5, 0, random.choice(shapes))
 
 
-def draw_text_middle(text, size, color, surface):
-	pass
+def draw_text_middle(surface, text, size, color):
+    font = pygame.font.Font(pygame.font.get_default_font(), size)
+    label = font.render(text, 1, color)
+    surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2), top_left_y + play_height/2 - label.get_height()/2))
 
 # Desenha a grid do jogo
 def draw_grid(surface, grid):
@@ -228,7 +236,7 @@ def clear_rows(grid, locked):
 
 def draw_next_shape(shape, surface):
     font = pygame.font.Font(pygame.font.get_default_font(), 30)
-    label = font.render('Next Shape', 1, PRETO)
+    label = font.render('Próxima Peça', 1, PRETO)
 
     sx = top_left_x + play_width + 50
     sy = top_left_y + play_height/2 - 100
@@ -240,15 +248,33 @@ def draw_next_shape(shape, surface):
             if column == '0':
                 pygame.draw.rect(surface, shape.color, (sx + j*30, sy + i*30, 30, 30), 0)
     
-    surface.blit(label, (sx + 10, sy - 30))
+    surface.blit(label, (sx -25, sy - 30))
 
 # Cria a Janela
-def draw_window(surface, grid, score =0):
+def draw_window(surface, grid, score =0, last_score = 0):
     surface.fill(CINZA)
     font = pygame.font.Font(pygame.font.get_default_font(), 60)
     label = font.render('Tetris do Felipe', 1, BRANCO)
 
     surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),30))
+
+    # Pontuação Atual
+    font = pygame.font.Font(pygame.font.get_default_font(), 30)
+    label = font.render('Pontuação: ' + str(score), 1, PRETO)
+
+    sx = top_left_x + play_width + 50
+    sy = top_left_y + play_height/2 - 100
+
+    surface.blit(label, (sx -40, sy -180))
+
+    # Maior Pontuação
+    font = pygame.font.Font(pygame.font.get_default_font(), 20)
+    label = font.render('Maior Pontuação: ' + last_score, 1, PRETO)
+
+    sx = top_left_x - 225
+    sy = top_left_y + 200
+
+    surface.blit(label, (sx -20, sy -20))
 
     for i in range(len(grid)):
         for j in range(len(grid[i])):
@@ -256,13 +282,14 @@ def draw_window(surface, grid, score =0):
 
     draw_grid(surface,grid)
 
-    pygame.draw.rect(surface, VERMELHO, (top_left_x, top_left_y, play_width, play_height), 4)
+    pygame.draw.rect(surface, AZUL, (top_left_x, top_left_y, play_width, play_height), 4)
 
     
 
 # Função main
 def main(window):
 	
+    last_score = max_score()
     locked_positions = {}
     grid = create_grid(locked_positions)
 
@@ -297,6 +324,7 @@ def main(window):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.display.quit()
             
             if event.type == pygame.KEYDOWN:
 
@@ -334,21 +362,51 @@ def main(window):
             current_piece = next_piece
             next_piece = get_shape()
             change_piece = False
-            score *= clear_rows(grid,locked_positions) * 10
+            score += clear_rows(grid,locked_positions) * 10
 
-        draw_window(window,grid)
+        draw_window(window,grid, score, last_score)
 
         draw_next_shape(next_piece, window)
         # Colocar a contagem dos pontos aqui, perto do formato da próxima peça
         pygame.display.update()
 
         if check_lost(locked_positions):
+            draw_text_middle(window, "Você Perdeu!", 80, VERMELHO)
+            pygame.display.update()
+            pygame.time.delay(1500)
             run = False
+            update_score(score)
 
-    pygame.display.quit()
+def update_score(nscore):
+    score = max_score()
+
+    with open('scores.txt', 'w') as f:
+        if int(score) > nscore:
+            f.write(str(score))
+        else:
+            f.write(str(nscore))
+
+def max_score():
+    with open('scores.txt', 'r') as f:
+        lines = f.readlines()
+        score = lines[0].strip()
+    
+    return score
 
 def main_menu(window):
-    main(window)
+    run = True
+    while run:
+        window.fill((PRETO))
+        draw_text_middle(window,"Pressione alguma tecla para jogar!", 45, BRANCO)
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if event.type == pygame.KEYDOWN:
+                main(window)
+    
+    pygame.display.quit()
+        
 
 window = pygame.display.set_mode((s_width,s_height))
 pygame.display.set_caption('Tetris do Felipe')
