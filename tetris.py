@@ -196,14 +196,14 @@ def draw_text_middle(text, size, color, surface):
 	pass
 
 # Desenha a grid do jogo
-def draw_grid(surface, row, col):
+def draw_grid(surface, grid):
     start_x = top_left_x
     start_y = top_left_y
 
     for i in range(len(grid)):
-        pygame.draw.line(surface, CINZA, (start_x, start_y + i*block_size), (start_x + play_width, start_y*block_size))
+        pygame.draw.line(surface, CINZA, (start_x, start_y+ i*30), (start_x + play_width, start_y + i * 30))
         for j in range(len(grid[i])):
-            pygame.draw.line(surface, CINZA, (start_x + j*block_size, start_y), (start_x + j*block_size, start_y + play_height))
+            pygame.draw.line(surface, CINZA, (start_x + j * 30, start_y), (start_x + j * 30, start_y + play_height))
 
 # Limpar a linha quando ela está completa
 def clear_rows(grid, locked):
@@ -224,6 +224,7 @@ def clear_rows(grid, locked):
             if y < index:
                 newKey = (x, y+increment)
                 locked[newKey] = locked.pop(key)
+    return increment
 
 def draw_next_shape(shape, surface):
     font = pygame.font.Font(pygame.font.get_default_font(), 30)
@@ -242,7 +243,7 @@ def draw_next_shape(shape, surface):
     surface.blit(label, (sx + 10, sy - 30))
 
 # Cria a Janela
-def draw_window(surface):
+def draw_window(surface, grid, score =0):
     surface.fill(CINZA)
     font = pygame.font.Font(pygame.font.get_default_font(), 60)
     label = font.render('Tetris do Felipe', 1, BRANCO)
@@ -251,11 +252,13 @@ def draw_window(surface):
 
     for i in range(len(grid)):
         for j in range(len(grid[i])):
-            pygame.draw.rect(surface, grid[i][j], (top_left_x + j*block_size, top_left_y+ i*block_size, block_size, block_size),0)
+            pygame.draw.rect(surface, grid[i][j], (top_left_x + j* 30, top_left_y + i * 30, 30, 30), 0)
+
+    draw_grid(surface,grid)
 
     pygame.draw.rect(surface, VERMELHO, (top_left_x, top_left_y, play_width, play_height), 4)
 
-    draw_grid(surface)
+    
 
 # Função main
 def main(window):
@@ -270,11 +273,19 @@ def main(window):
     clock = pygame.time.Clock()
     fall_time = 0
     fall_speed = 0.27
+    level_time = 0
+    score = 0
 
     while run:
         grid = create_grid(locked_positions)
         fall_time += clock.get_rawtime()
+        level_time += clock.get_rawtime()
         clock.tick()
+
+        if level_time/1000 > 5:
+            level_time = 0
+            if fall_speed > 0.12:
+                fall_speed -= 0.005
 
         if fall_time/1000 > fall_speed:
             fall_time = 0
@@ -288,22 +299,26 @@ def main(window):
                 run = False
             
             if event.type == pygame.KEYDOWN:
+
                 if event.key == pygame.K_LEFT:
                     current_piece.x -= 1
                     if not(valid_space(current_piece,grid)):
                         current_piece.x += 1
+
                 if event.key == pygame.K_RIGHT:
-                    current_piece.y += 1
+                    current_piece.x += 1
                     if not(valid_space(current_piece,grid)):
-                        current_piece.y -= 1
+                        current_piece.x -= 1
+
                 if event.key == pygame.K_DOWN:
                     current_piece.y += 1
                     if not(valid_space(current_piece,grid)):
                         current_piece.y -= 1
+
                 if event.key == pygame.K_UP:
-                    current_piece.rotation += 1
-                    if not(valid_space(current_piece,grid)):
-                        current_piece.rotation -= 1
+                    current_piece.rotation = current_piece.rotation + 1 % len(current_piece.shape)
+                    if not valid_space(current_piece, grid):
+                        current_piece.rotation = current_piece.rotation - 1 % len(current_piece.shape)
         
         shape_pos = convert_shape_format(current_piece)
 
@@ -319,6 +334,7 @@ def main(window):
             current_piece = next_piece
             next_piece = get_shape()
             change_piece = False
+            score *= clear_rows(grid,locked_positions) * 10
 
         draw_window(window,grid)
 
